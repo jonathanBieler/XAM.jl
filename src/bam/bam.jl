@@ -17,32 +17,46 @@ import BioGenerics: isfilled, header
 
 import GenomicFeatures: eachoverlap
 
-# BGZFLib uses the BufferIO interface (not Base.IO), so Julia's generic
-# read(io, T) / write(io, T) for primitives don't dispatch. Add the minimal
-# overloads needed by BAM header reading/writing.
+# BGZFLib exposes BufferIO's `AbstractBufReader`/`AbstractBufWriter` interface
+# rather than `Base.IO`, and that interface intentionally omits `read(io, T)`
+# for multi-byte primitives. We provide the little-endian primitive/byte IO that
+# BAM header and record parsing needs as *local* helpers: defining methods on
+# `Base.read`/`Base.write` for the BGZFLib-owned reader/writer types would be
+# type piracy (neither the function nor the argument types are owned here).
 
-Base.read(io::BGZFLib.BGZFReader, nb::Integer) =
-    (v = Vector{UInt8}(undef, nb); read!(io, v); v)
+# Read exactly `nb` bytes. BufferIO's `read!` throws on a truncated stream,
+# unlike `read(io, nb)`, which would silently return a short vector.
+function bam_read(io::BGZFLib.BGZFReader, nb::Integer)
+    data = Vector{UInt8}(undef, nb)
+    read!(io, data)
+    return data
+end
 
-function Base.read(io::BGZFLib.BGZFReader, ::Type{T}) where T<:Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}
+bam_read(io::BGZFLib.BGZFReader, ::Type{UInt8}) = read(io, UInt8)
+
+function bam_read(io::BGZFLib.BGZFReader, ::Type{T}) where {T<:Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}}
     ref = Ref{T}()
-    GC.@preserve ref unsafe_read(io, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), UInt(sizeof(T)))
+    # BufferIO's `unsafe_read` returns a short count at EOF instead of throwing.
+    n = GC.@preserve ref unsafe_read(io, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), UInt(sizeof(T)))
+    n < sizeof(T) && throw(EOFError())
     return ltoh(ref[])
 end
 
-function Base.write(io::BGZFLib.BGZFWriter, x::T) where T<:Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}
+function bam_write(io::BGZFLib.BGZFWriter, x::T) where {T<:Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}}
     v = htol(x)
     ref = Ref(v)
-    GC.@preserve ref return unsafe_write(io, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), UInt(sizeof(T)))
+    return GC.@preserve ref unsafe_write(io, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), UInt(sizeof(T)))
 end
 
-Base.write(io::BGZFLib.BGZFWriter, v::AbstractVector{UInt8}) =
-    unsafe_write(io, pointer(v), UInt(length(v)))
+bam_write(io::BGZFLib.BGZFWriter, data::AbstractVector{UInt8}) =
+    unsafe_write(io, pointer(data), UInt(length(data)))
 
-Base.write(io::BGZFLib.BGZFWriter, s::AbstractString) =
+bam_write(io::BGZFLib.BGZFWriter, s::AbstractString) =
     unsafe_write(io, pointer(s), UInt(ncodeunits(s)))
 
-Base.write(io::BGZFLib.BGZFWriter, c::Char) = write(io, UInt8(c))
+bam_write(io::BGZFLib.BGZFWriter, x::UInt8) = write(io, x)
+
+bam_write(io::BGZFLib.BGZFWriter, c::Char) = bam_write(io, UInt8(c))
 
 
 include("bai.jl")
