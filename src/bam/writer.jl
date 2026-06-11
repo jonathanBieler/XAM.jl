@@ -2,7 +2,7 @@
 # ==========
 
 """
-    BAM.Writer(output::BGZFStream, header::SAM.Header)
+    BAM.Writer(output::BGZFWriter, header::SAM.Header)
 
 Create a data writer of the BAM file format.
 
@@ -11,10 +11,10 @@ Create a data writer of the BAM file format.
 * `header`: SAM header object
 """
 mutable struct Writer <: XAMWriter
-    stream::BGZFStreams.BGZFStream
+    stream::BGZFLib.BGZFWriter
 end
 
-function Writer(stream::BGZFStreams.BGZFStream, header::SAM.Header)
+function Writer(stream::BGZFLib.BGZFWriter, header::SAM.Header)
     refseqnames = String[]
     refseqlens = Int[]
     for metainfo in findall(header, "SQ")
@@ -31,8 +31,8 @@ end
 
 function Base.write(writer::Writer, record::Record)
     n = 0
-    n += unsafe_write(writer.stream, pointer_from_objref(record), FIXED_FIELDS_BYTES)
-    n += unsafe_write(writer.stream, pointer(record.data), data_size(record))
+    n += unsafe_write(writer.stream, pointer_from_objref(record), UInt64(FIXED_FIELDS_BYTES))
+    n += unsafe_write(writer.stream, pointer(record.data), UInt64(data_size(record)))
     return n
 end
 

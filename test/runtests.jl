@@ -7,7 +7,7 @@ using GenomicFeatures
 using XAM
 
 import BioAlignments: Alignment, AlignmentAnchor, OP_START, OP_MATCH, OP_DELETE
-import BGZFStreams: BGZFStream
+import BGZFLib: BGZFReader, BGZFWriter
 import BioGenerics.Exceptions: MissingFieldException
 import BioSequences: @dna_str, @aa_str
 

@@ -199,7 +199,7 @@
 
                 header_original = header(reader)
 
-                writer = BAM.Writer(BGZFStream(path, "w"), BAM.header(reader, fillSQ=isempty(findall(header(reader), "SQ"))))
+                writer = BAM.Writer(BGZFWriter(open(path, "w")), BAM.header(reader, fillSQ=isempty(findall(header(reader), "SQ"))))
 
                 records = BAM.Record[]
                 for record in reader
@@ -212,8 +212,8 @@
 
                 # Check that EOF_BLOCK gets written.
                 nbytes = filesize(path)
-                @test BAM.BGZFStreams.EOF_BLOCK == open(path) do io
-                    seek(io, nbytes - length(BAM.BGZFStreams.EOF_BLOCK))
+                @test BGZFLib.EOF_BLOCK == open(path) do io
+                    seek(io, nbytes - length(BGZFLib.EOF_BLOCK))
                     read(io)
                 end
 

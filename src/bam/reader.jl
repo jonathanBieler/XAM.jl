@@ -11,9 +11,9 @@ Create a data reader of the BAM file format.
 * `index=nothing`: filepath to a random access index (currently *bai* is supported) or BAI object
 """
 mutable struct Reader{T} <: XAMReader
-    stream::BGZFStreams.BGZFStream{T}
+    stream::BGZFLib.BGZFReader{T}
     header::SAM.Header
-    start_offset::BGZFStreams.VirtualOffset
+    start_offset::BGZFLib.VirtualOffset
     refseqnames::Vector{String}
     refseqlens::Vector{Int}
     index::Union{Nothing, BAI}
@@ -59,8 +59,8 @@ function header(reader::Reader; fillSQ::Bool=false)::SAM.Header
     return header
 end
 
-function Base.seek(reader::Reader, voffset::BGZFStreams.VirtualOffset)
-    seek(reader.stream, voffset)
+function Base.seek(reader::Reader, voffset::BGZFLib.VirtualOffset)
+    BGZFLib.virtual_seek(reader.stream, voffset)
 end
 
 function Base.seekstart(reader::Reader)
@@ -75,7 +75,7 @@ function Base.iterate(reader::Reader, nextone = Record())
 end
 
 # Initialize a BAM reader by reading the header section.
-function init_bam_reader(input::BGZFStreams.BGZFStream)
+function init_bam_reader(input::BGZFLib.BGZFReader)
     # magic bytes
     B = read(input, UInt8)
     A = read(input, UInt8)
@@ -103,9 +103,7 @@ function init_bam_reader(input::BGZFStreams.BGZFStream)
         refseqlens[i] = seqlen
     end
 
-    voffset = isa(input.io, Base.AbstractPipe) ?
-        BGZFStreams.VirtualOffset(0, 0) :
-        BGZFStreams.virtualoffset(input)
+    voffset = BGZFLib.virtual_position(input)
 
     return Reader(
         input,
@@ -117,7 +115,7 @@ function init_bam_reader(input::BGZFStreams.BGZFStream)
 end
 
 function init_bam_reader(input::IO)
-    return init_bam_reader(BGZFStreams.BGZFStream(input))
+    return init_bam_reader(BGZFLib.BGZFReader(input))
 end
 
 init_bam_index(index::AbstractString) = BAI(index)
@@ -129,12 +127,12 @@ function _read!(reader::Reader, record)
     unsafe_read(
         reader.stream,
         pointer_from_objref(record),
-        FIXED_FIELDS_BYTES)
+        UInt64(FIXED_FIELDS_BYTES))
     dsize = data_size(record)
     if length(record.data) < dsize
         resize!(record.data, dsize)
     end
-    unsafe_read(reader.stream, pointer(record.data), dsize)
+    unsafe_read(reader.stream, pointer(record.data), UInt64(dsize))
     record.reader = reader
     return record
 end

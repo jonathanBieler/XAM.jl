@@ -5,7 +5,7 @@ version = "0.4.2"
 
 [deps]
 Automa = "67c07d97-cdcb-5c2c-af73-a7f9c32a568b"
-BGZFStreams = "28d598bf-9b8f-59f1-b38c-5a06b4a0f5e6"
+BGZFLib = "b86bd9b6-aa64-492d-a0e2-e61a004d8aed"
 BioAlignments = "00701ae9-d1dc-5365-b64a-a3a3ebf5695e"
 BioGenerics = "47718e42-2ac5-11e9-14af-e5595289c2ea"
 BioSequences = "7e6ae17a-c86d-528c-b3b9-7f778a29fe59"
@@ -16,7 +16,7 @@ TranscodingStreams = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 
 [compat]
 Automa = "1"
-BGZFStreams = "0.3.1"
+BGZFLib = "0.1"
 BioAlignments = "3"
 BioGenerics = "0.1"
 BioSequences = "3"
