@@ -64,7 +64,9 @@ function Base.seek(reader::Reader, voffset::BGZFLib.VirtualOffset)
 end
 
 function Base.seekstart(reader::Reader)
-    seek(reader.stream, reader.start_offset)
+    # `start_offset` is a BGZFLib.VirtualOffset, so go through the Reader's seek
+    # (which calls virtual_seek); BGZFReader's own `seek` only takes a byte offset.
+    seek(reader, reader.start_offset)
 end
 
 function Base.iterate(reader::Reader, nextone = Record())

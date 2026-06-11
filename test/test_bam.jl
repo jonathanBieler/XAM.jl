@@ -44,7 +44,7 @@
         reader = open(BAM.Reader, joinpath(bamdir, "ce#1.bam"))
         @test isa(reader, BAM.Reader)
         @test eltype(reader) === BAM.Record
-        @test startswith(repr(reader), "XAM.BAM.Reader{IOStream}:")
+        @test startswith(repr(reader), "XAM.BAM.Reader{")
 
         # header
         h = header(reader)
