@@ -64,7 +64,9 @@ function Base.seek(reader::Reader, voffset::BGZFLib.VirtualOffset)
 end
 
 function Base.seekstart(reader::Reader)
-    seek(reader.stream, reader.start_offset)
+    # `start_offset` is a BGZFLib.VirtualOffset, so go through the Reader's seek
+    # (which calls virtual_seek); BGZFReader's own `seek` only takes a byte offset.
+    seek(reader, reader.start_offset)
 end
 
 function Base.iterate(reader::Reader, nextone = Record())
@@ -77,28 +79,28 @@ end
 # Initialize a BAM reader by reading the header section.
 function init_bam_reader(input::BGZFLib.BGZFReader)
     # magic bytes
-    B = read(input, UInt8)
-    A = read(input, UInt8)
-    M = read(input, UInt8)
-    x = read(input, UInt8)
+    B = bam_read(input, UInt8)
+    A = bam_read(input, UInt8)
+    M = bam_read(input, UInt8)
+    x = bam_read(input, UInt8)
 
     if B != UInt8('B') || A != UInt8('A') || M != UInt8('M') || x != 0x01
         error("input was not a valid BAM file")
     end
 
     # SAM header
-    textlen = read(input, Int32)
-    samreader = SAM.Reader(IOBuffer(read(input, textlen)))
+    textlen = bam_read(input, Int32)
+    samreader = SAM.Reader(IOBuffer(bam_read(input, textlen)))
 
     # reference sequences
-    n_refs = read(input, Int32)
+    n_refs = bam_read(input, Int32)
     refseqnames = Vector{String}(undef, n_refs)
     refseqlens = Vector{Int}(undef, n_refs)
     @inbounds for i in 1:n_refs
-        namelen = read(input, Int32)
-        data = read(input, namelen)
+        namelen = bam_read(input, Int32)
+        data = bam_read(input, namelen)
         seqname = unsafe_string(pointer(data))
-        seqlen = read(input, Int32)
+        seqlen = bam_read(input, Int32)
         refseqnames[i] = seqname
         refseqlens[i] = seqlen
     end
@@ -124,15 +126,19 @@ init_bam_index(index::Nothing) = nothing
 init_bam_index(index) = error("unrecognizable index argument")
 
 function _read!(reader::Reader, record)
-    unsafe_read(
-        reader.stream,
-        pointer_from_objref(record),
-        UInt64(FIXED_FIELDS_BYTES))
+    # BufferIO's `unsafe_read` returns a short count at end-of-stream rather than
+    # throwing, so a clean end-of-records (0 bytes) or a truncated record must be
+    # turned into an EOFError here: `BioGenerics.IO.tryread!` relies on that to
+    # terminate iteration.
+    n = GC.@preserve record unsafe_read(
+        reader.stream, Ptr{UInt8}(pointer_from_objref(record)), UInt(FIXED_FIELDS_BYTES))
+    n < FIXED_FIELDS_BYTES && throw(EOFError())
     dsize = data_size(record)
     if length(record.data) < dsize
         resize!(record.data, dsize)
     end
-    unsafe_read(reader.stream, pointer(record.data), UInt64(dsize))
+    n = GC.@preserve record unsafe_read(reader.stream, pointer(record.data), UInt(dsize))
+    n < dsize && throw(EOFError())
     record.reader = reader
     return record
 end

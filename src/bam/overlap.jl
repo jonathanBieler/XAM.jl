@@ -45,6 +45,20 @@ mutable struct OverlapIteratorState
     record::Record
 end
 
+# Indexes.jl reports chunk boundaries as `BGZFStreams.VirtualOffset` values, which
+# are bit-identical to BGZFLib's but a distinct type (and BGZFStreams is no longer
+# a dependency). Bridge through the packed 64-bit representation: the high 48 bits
+# are the compressed-block offset, the low 16 the in-block offset.
+function chunk_virtualoffset(voffset)
+    x = convert(UInt64, voffset)
+    return BGZFLib.VirtualOffset(x >> 16, x & 0xffff)
+end
+
+# Order two BGZFLib.VirtualOffsets via their public components, without assuming
+# BGZFLib defines `<` for VirtualOffset.
+voffset_isless(a::BGZFLib.VirtualOffset, b::BGZFLib.VirtualOffset) =
+    (a.file_offset, a.block_offset) < (b.file_offset, b.block_offset)
+
 function Base.iterate(iter::OverlapIterator)
     refindex = findfirst(isequal(iter.refname), iter.reader.refseqnames)
     if refindex === nothing
@@ -58,14 +72,15 @@ function Base.iterate(iter::OverlapIterator)
         return nothing
     end
     state = OverlapIteratorState(refindex, chunks, 1, Record())
-    seek(iter.reader, state.chunks[state.chunkid].start)
+    seek(iter.reader, chunk_virtualoffset(state.chunks[state.chunkid].start))
     return iterate(iter, state)
 end
 
 function Base.iterate(iter::OverlapIterator, state)
     while state.chunkid ≤ lastindex(state.chunks)
         chunk = state.chunks[state.chunkid]
-        while BGZFLib.virtual_position(iter.reader.stream) < chunk.stop
+        chunk_stop = chunk_virtualoffset(chunk.stop)
+        while voffset_isless(BGZFLib.virtual_position(iter.reader.stream), chunk_stop)
             read!(iter.reader, state.record)
             c = compare_intervals(state.record, (state.refindex, iter.interval))
             if c == 0  # overlapping
@@ -78,7 +93,7 @@ function Base.iterate(iter::OverlapIterator, state)
         end
         state.chunkid += 1
         if state.chunkid ≤ lastindex(state.chunks)
-            seek(iter.reader, state.chunks[state.chunkid].start)
+            seek(iter.reader, chunk_virtualoffset(state.chunks[state.chunkid].start))
         end
     end
     # no more overlapping records
