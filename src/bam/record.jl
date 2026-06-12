@@ -475,13 +475,9 @@ end
 function sequence!(buf::BioSequences.LongDNA{4}, record::Record)
     checkfilled(record)
     seqlen = seqlength(record)
-    if seqlen == 0
-        buf.len = UInt(0)
-        return buf
-    end
+    resize!(buf, seqlen)
+    seqlen == 0 && return buf
     n_words = cld(seqlen, 16)
-    length(buf.data) < n_words && resize!(buf.data, n_words)
-    buf.len = UInt(seqlen)
     seq_data = record.data
     buf_data = buf.data
     offset = seqname_length(record) + n_cigar_op(record, false) * 4 + 1
