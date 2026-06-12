@@ -287,13 +287,13 @@ SAM.Writer(IOStream(<file my-data.sam>))
 
 ```
 
-To make a BAM Writer is slightly different, as you need to use a specific stream type from the [https://github.com/BioJulia/BGZFStreams.jl](https://github.com/BioJulia/BGZFStreams.jl) package:
+To make a BAM Writer is slightly different, as you need to use a specific stream type from the [https://github.com/BioJulia/BGZFLib.jl](https://github.com/BioJulia/BGZFLib.jl) package:
 
 ```julia
-julia> using BGZFStreams
+julia> using BGZFLib
 
-julia> bamw = BAM.Writer(BGZFStream(open("my-data.bam", "w"), "w"))
-BAM.Writer(BGZFStreams.BGZFStream{IOStream}(<mode=write>))
+julia> bamw = BAM.Writer(BGZFLib.BGZFWriter(open("my-data.bam", "w")))
+BAM.Writer(BGZFLib.BGZFWriter{BufferIO.BufWriter{IOStream}}())
 
 ```
 

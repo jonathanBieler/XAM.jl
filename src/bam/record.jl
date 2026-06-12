@@ -469,9 +469,12 @@ function sequence(record::Record)
     return BioSequences.LongDNA{4}(data, UInt(seqlen))
 end
 
-# Fill `buf` in-place with the sequence of `record`, reusing its internal
-# Vector{UInt64} storage. Grows if needed, never shrinks.
-# Valid until the next sequence!(buf, ...) call.
+"""
+    sequence!(buf::BioSequences.LongDNA{4}, record::Record)
+
+Fill `buf` in-place with the sequence of `record`. Data is copied into `buf`'s
+internal storage, so the result is independent of `record`.
+"""
 function sequence!(buf::BioSequences.LongDNA{4}, record::Record)
     checkfilled(record)
     seqlen = seqlength(record)
@@ -521,8 +524,12 @@ function quality(record::Record)
     return record.data[(1+offset):(seqlen+offset)]
 end
 
-# Like quality(), but returns a view into record.data — no allocation.
-# The view is only valid until the next read!(reader, record) call.
+"""
+    quality_view(record::Record)
+
+Get a view into the base quality of `record`.
+Warning : The view is tied to the `record` and can be invalidated by a subsequent read!(reader, record) call.
+"""
 function quality_view(record::Record)
     checkfilled(record)
     seqlen = seqlength(record)
