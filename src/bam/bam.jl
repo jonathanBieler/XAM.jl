@@ -10,6 +10,7 @@ import ..XAM: flags, XAMRecord, XAMReader, XAMWriter,
 	ismapped, isprimaryalignment, ispositivestrand, isnextmapped #TODO: Deprecate import of flag queries. These were imported to preseve existing API.
 
 import BGZFLib
+import MemoryViews
 import BioAlignments
 import Indexes
 import BioSequences
@@ -23,7 +24,7 @@ import GenomicFeatures: eachoverlap
 
 @inline function _bam_read(io::BGZFLib.BGZFReader, ::Type{T}) where T <: Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}
     ref = Ref{T}()
-    GC.@preserve ref unsafe_read(io, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), UInt(sizeof(T)))
+    GC.@preserve ref BGZFLib.BufferIO.read_all!(io, MemoryViews.MemoryView(unsafe_wrap(Array, Ptr{UInt8}(Base.unsafe_convert(Ptr{T}, ref)), sizeof(T))))
     return ltoh(ref[])
 end
 
