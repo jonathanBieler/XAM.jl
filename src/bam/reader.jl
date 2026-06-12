@@ -87,18 +87,18 @@ function init_bam_reader(input::BGZFLib.BGZFReader)
     end
 
     # SAM header
-    textlen = read(input, Int32)
+    textlen = _bam_read(input, Int32)
     samreader = SAM.Reader(IOBuffer(read(input, textlen)))
 
     # reference sequences
-    n_refs = read(input, Int32)
+    n_refs = _bam_read(input, Int32)
     refseqnames = Vector{String}(undef, n_refs)
     refseqlens = Vector{Int}(undef, n_refs)
     @inbounds for i in 1:n_refs
-        namelen = read(input, Int32)
+        namelen = _bam_read(input, Int32)
         data = read(input, namelen)
         seqname = unsafe_string(pointer(data))
-        seqlen = read(input, Int32)
+        seqlen = _bam_read(input, Int32)
         refseqnames[i] = seqname
         refseqlens[i] = seqlen
     end
