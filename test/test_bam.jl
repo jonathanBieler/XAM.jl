@@ -228,8 +228,8 @@
 
                 # Check that EOF_BLOCK gets written.
                 nbytes = filesize(path)
-                @test BGZFLib.EOF_BLOCK == open(path) do io
-                    seek(io, nbytes - length(BGZFLib.EOF_BLOCK))
+                @test EOF_BLOCK == open(path) do io
+                    seek(io, nbytes - length(EOF_BLOCK))
                     read(io)
                 end
 

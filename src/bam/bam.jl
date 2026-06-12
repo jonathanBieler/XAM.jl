@@ -18,6 +18,13 @@ import BioGenerics: isfilled, header
 
 import GenomicFeatures: eachoverlap
 
+# Indexes.Chunk.start/stop are BGZFStreams.VirtualOffset (a 64-bit primitive type).
+# Convert to BGZFLib.VirtualOffset without importing BGZFStreams.
+@inline function _to_virtual_offset(vo)
+    u = reinterpret(UInt64, vo)
+    BGZFLib.VirtualOffset(u >> 16, u & 0xffff)
+end
+
 # BGZFLib uses the BufferIO interface (not Base.IO), so Base.read(io, ::Type{T})
 # for non-UInt8 primitives is not provided. These private helpers own both the
 # function name and the dispatch, avoiding type piracy.

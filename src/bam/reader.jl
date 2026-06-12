@@ -64,7 +64,7 @@ function Base.seek(reader::Reader, voffset::BGZFLib.VirtualOffset)
 end
 
 function Base.seekstart(reader::Reader)
-    seek(reader.stream, reader.start_offset)
+    BGZFLib.virtual_seek(reader.stream, reader.start_offset)
 end
 
 function Base.iterate(reader::Reader, nextone = Record())
@@ -124,15 +124,18 @@ init_bam_index(index::Nothing) = nothing
 init_bam_index(index) = error("unrecognizable index argument")
 
 function _read!(reader::Reader, record)
-    unsafe_read(
+    # BufferIO.unsafe_read returns a byte count (unlike Base.IO which throws EOFError).
+    # Check explicitly so the overlap iterator's virtual_position check stays bounded.
+    n = unsafe_read(
         reader.stream,
         pointer_from_objref(record),
-        UInt64(FIXED_FIELDS_BYTES))
+        UInt(FIXED_FIELDS_BYTES))
+    n < FIXED_FIELDS_BYTES && throw(EOFError())
     dsize = data_size(record)
     if length(record.data) < dsize
         resize!(record.data, dsize)
     end
-    unsafe_read(reader.stream, pointer(record.data), UInt64(dsize))
+    unsafe_read(reader.stream, pointer(record.data), UInt(dsize))
     record.reader = reader
     return record
 end
