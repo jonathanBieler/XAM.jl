@@ -26,7 +26,7 @@ GenomicFeatures = "2"
 Indexes = "0.1"
 MemoryViews = "0.4"
 TranscodingStreams = "0.6, 0.7, 0.8, 0.9, 0.10, 0.11"
-julia = "1.6"
+julia = "1.11"
 
 [extras]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
