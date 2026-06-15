@@ -75,23 +75,7 @@
         @test BAM.seqlength(record) === 100
         @test BAM.hasquality(record)
         @test eltype(BAM.quality(record)) == UInt8
-        expected_quality = [Int(x) - 33 for x in "#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"]
-        @test BAM.quality(record) == expected_quality
-        # quality_view returns a view (no allocation) that matches quality()
-        qv = BAM.quality_view(record)
-        @test qv == expected_quality
-        @test qv isa AbstractVector{UInt8}
-        @test parent(qv) === record.data
-
-        expected_seq = BAM.sequence(record)
-        # sequence! fills a buffer in-place and must match the allocating sequence()
-        buf = LongDNA{4}(undef, 0)
-        BAM.sequence!(buf, record)
-        @test buf == expected_seq
-        # calling again reuses the buffer (length stays the same, content identical)
-        BAM.sequence!(buf, record)
-        @test buf == expected_seq
-
+        @test BAM.quality(record) == [Int(x) - 33 for x in "#############################@B?8B?BA@@DDBCDDCBC@CDCDCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"]
         @test BAM.flags(record) === UInt16(16)
         @test BAM.cigar(record) == "27M1D73M"
         @test BAM.alignment(record) == Alignment([

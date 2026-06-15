@@ -469,31 +469,6 @@ function sequence(record::Record)
     return BioSequences.LongDNA{4}(data, UInt(seqlen))
 end
 
-"""
-    sequence!(buf::BioSequences.LongDNA{4}, record::Record)
-
-Fill `buf` in-place with the sequence of `record`. Data is copied into `buf`'s
-internal storage, so the result is independent of `record`.
-"""
-function sequence!(buf::BioSequences.LongDNA{4}, record::Record)
-    checkfilled(record)
-    seqlen = seqlength(record)
-    resize!(buf, seqlen)
-    seqlen == 0 && return buf
-    n_words = cld(seqlen, 16)
-    seq_data = record.data
-    buf_data = buf.data
-    offset = seqname_length(record) + n_cigar_op(record, false) * 4 + 1
-    GC.@preserve seq_data buf_data begin
-        src = Ptr{UInt64}(pointer(seq_data, offset))
-        for i in 1:n_words
-            x = unsafe_load(src, i)
-            @inbounds buf_data[i] = (x & 0x0f0f0f0f0f0f0f0f) << 4 | (x & 0xf0f0f0f0f0f0f0f0) >> 4
-        end
-    end
-    return buf
-end
-
 function hassequence(record::Record)
     return isfilled(record)
 end
@@ -522,19 +497,6 @@ function quality(record::Record)
     seqlen = seqlength(record)
     offset = seqname_length(record) + n_cigar_op(record, false) * 4 + cld(seqlen, 2)
     return record.data[(1+offset):(seqlen+offset)]
-end
-
-"""
-    quality_view(record::Record)
-
-Get a view into the base quality of `record`.
-Warning : The view is tied to the `record` and can be invalidated by a subsequent read!(reader, record) call.
-"""
-function quality_view(record::Record)
-    checkfilled(record)
-    seqlen = seqlength(record)
-    offset = seqname_length(record) + n_cigar_op(record, false) * 4 + cld(seqlen, 2)
-    return @view record.data[(1+offset):(seqlen+offset)]
 end
 
 function hasquality(record::Record)
