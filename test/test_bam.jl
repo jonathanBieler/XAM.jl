@@ -228,6 +228,48 @@
         end
     end
 
+    @testset "Round trip, BGZFStreams" begin
+        for specimen in list_valid_specimens("BAM")
+            filepath = joinpath(bamdir, filename(specimen))
+            mktemp() do path, _
+                # copy
+                if hastags(specimen) && in("bai", tags(specimen))
+                    reader = open(BAM.Reader, filepath, index=filepath * ".bai")
+                else
+                    reader = open(BAM.Reader, filepath)
+                end
+
+                header_original = header(reader)
+
+                writer = BAM.Writer(BGZFStreams.BGZFStream(path, "w"), BAM.header(reader, fillSQ=isempty(findall(header(reader), "SQ"))))
+
+                records = BAM.Record[]
+                for record in reader
+                    push!(records, record)
+                    write(writer, record)
+                end
+                close(reader)
+                close(writer)
+
+
+                # Check that EOF_BLOCK gets written.
+                nbytes = filesize(path)
+                @test EOF_BLOCK == open(path) do io
+                    seek(io, nbytes - length(EOF_BLOCK))
+                    read(io)
+                end
+
+                reader = open(BAM.Reader, path)
+
+                @test header(reader) == header_original
+                @test compare_records(collect(reader), records)
+
+                close(reader)
+
+            end
+        end
+    end
+
     @testset "In-Place-Reading Pattern" begin
 
         file_bam = joinpath(bamdir, "ce#5b.bam")

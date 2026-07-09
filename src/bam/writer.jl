@@ -2,7 +2,7 @@
 # ==========
 
 """
-    BAM.Writer(output::BGZFWriter, header::SAM.Header)
+    BAM.Writer(output::T, header::SAM.Header)
 
 Create a data writer of the BAM file format.
 
@@ -10,11 +10,11 @@ Create a data writer of the BAM file format.
 * `output`: data sink
 * `header`: SAM header object
 """
-mutable struct Writer <: XAMWriter
-    stream::BGZFLib.BGZFWriter
+mutable struct Writer{T} <: XAMWriter
+    stream::T
 end
 
-function Writer(stream::BGZFLib.BGZFWriter, header::SAM.Header)
+function Writer(stream::T, header::SAM.Header) where T
     refseqnames = String[]
     refseqlens = Int[]
     for metainfo in findall(header, "SQ")
@@ -38,25 +38,24 @@ end
 
 function write_header(stream, header, refseqnames, refseqlens)
     @assert length(refseqnames) == length(refseqlens) "Lengths of refseq names and lengths must match."
-    n = 0
-
+    
     # magic bytes
-    n += write(stream, "BAM\1")
+    write(stream, "BAM\1")
 
     # SAM header
     buf = IOBuffer()
     l = write(SAM.Writer(buf), header)
-    n += _bam_write(stream, Int32(l))
-    n += write(stream, take!(buf))
+    store_le(stream, Int32(l))
+    write(stream, take!(buf))
 
     # reference sequences
-    n += _bam_write(stream, Int32(length(refseqnames)))
+    store_le(stream, Int32(length(refseqnames)))
     for (seqname, seqlen) in zip(refseqnames, refseqlens)
         namelen = length(seqname)
-        n += _bam_write(stream, Int32(namelen + 1))
-        n += write(stream, seqname, '\0')
-        n += _bam_write(stream, Int32(seqlen))
+        store_le(stream, Int32(namelen + 1))
+        write(stream, seqname, '\0')
+        store_le(stream, Int32(seqlen))
     end
 
-    return n
+    return nothing
 end

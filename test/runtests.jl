@@ -5,6 +5,7 @@ using BioGenerics
 using FormatSpecimens
 using GenomicFeatures
 using XAM
+using BGZFStreams
 
 import BioAlignments: Alignment, AlignmentAnchor, OP_START, OP_MATCH, OP_DELETE
 import BGZFLib: BGZFReader, BGZFWriter, EOF_BLOCK

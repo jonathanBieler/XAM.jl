@@ -66,12 +66,15 @@ function Base.iterate(iter::OverlapIterator, state)
     while state.chunkid ≤ lastindex(state.chunks)
         chunk = state.chunks[state.chunkid]
         while BGZFLib.virtual_position(iter.reader.stream) < _to_virtual_offset(chunk.stop)
+            
+            # FIXME: This is a bit of a hack, should be fixed in the future, BioGenerics uses this pattern
             try
                 read!(iter.reader, state.record)
             catch ex
                 ex isa EOFError && break
                 rethrow()
             end
+        
             c = compare_intervals(state.record, (state.refindex, iter.interval))
             if c == 0  # overlapping
                 return copy(state.record), state
@@ -80,6 +83,7 @@ function Base.iterate(iter::OverlapIterator, state)
                 # no more overlapping records in this chunk since records are sorted
                 break
             end
+            
         end
         state.chunkid += 1
         if state.chunkid ≤ lastindex(state.chunks)
