@@ -75,7 +75,7 @@ end
 end
 
 @inline function store_le(
-        io::BGZFLib.BGZFWriter,
+        io::Union{BGZFLib.BGZFWriter, BGZFLib.SyncBGZFWriter},
         x::T
     ) where T <: Union{Int16,UInt16,Int32,UInt32,Int64,UInt64,Float32,Float64}
     x = htol(x)
@@ -90,7 +90,7 @@ end
     end
 end
 
-@noinline function store_le_slowpath(io::BGZFLib.BGZFWriter, x::T) where T
+@noinline function store_le_slowpath(io::Union{BGZFLib.BGZFWriter, BGZFLib.SyncBGZFWriter}, x::T) where T
     BufferIO.grow_buffer(io)
     buffer = BufferIO.get_buffer(io)
     # BGZFLib documents that grow_buffer will do a shallow flush,

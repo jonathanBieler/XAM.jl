@@ -135,7 +135,8 @@ function _read!(reader::Reader, record)
     if length(record.data) < dsize
         resize!(record.data, dsize)
     end
-    unsafe_read(reader.stream, pointer(record.data), UInt(dsize))
+    n = unsafe_read(reader.stream, pointer(record.data), UInt(dsize))
+    n < dsize && throw(EOFError())
     record.reader = reader
     return record
 end
